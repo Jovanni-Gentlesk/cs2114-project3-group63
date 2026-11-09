@@ -6,36 +6,40 @@ ServiceFlow is a Java console app for small landscaping, cleaning, and repair bu
 
 ## How to run
 
-Use JDK 17 or newer. The driver and console need only Java. JUnit is needed to run the tests.
+### Interactive console in VS Code on Windows
 
-### Eclipse
+1. Clone or download this repository. If you download a ZIP, extract it first.
+2. In VS Code, choose **File → Open Folder** and select the folder containing `README.md`, `src`, and `run-serviceflow.cmd`.
+3. Press **Ctrl+Shift+B** or choose **Terminal → Run Task → ServiceFlow: Run**.
+4. When `Choice:` appears in the terminal, enter a menu number. The first run needs internet to download the tools into the project folder. The VS Code task handles that setup automatically.
 
-1. Choose **File → Import → General → Existing Projects into Workspace**.
-2. Choose **Select archive file**, select `ServiceFlow-Eclipse.zip`, check **ServiceFlow-Eclipse**, and click **Finish**.
-3. In Package Explorer, right-click `ServiceController.java` in `serviceflow.controller` and select **Run As → Java Application**. Use the **Console** tab for input. Run `ModelDriver.java` in `serviceflow.demo` the same way for the standalone model.
-4. To run the tests, right-click `src/test/java` and choose **Run As → JUnit Test**. The Eclipse project includes the JUnit 5 build-path entry.
+For the lab demo, choose `1` and enter `Ana`, `Mow lawn`, `2.5`, `40`, and `15`. Choose `4` to start the job and `5` to finish it. Choose `8` to see **$115.00 unpaid**. Choose `6`, enter job ID `1`, and then choose `8` to see **$115.00 collected** and **$0.00 unpaid**. Choose `0` to exit.
 
-For the terminal commands below, extract the ZIP and open a terminal in the folder that contains this README and `src`.
+### Standalone model driver
 
-### PowerShell
+From the repo root, run these commands in PowerShell with JDK 17 or newer. This compiles only the model and demo packages.
+
+```powershell
+$modelSources = @(Get-ChildItem -Path 'src/main/java/serviceflow/model','src/main/java/serviceflow/demo' -Recurse -Filter *.java | ForEach-Object { $_.FullName })
+javac --release 17 -encoding UTF-8 -d model-out $modelSources
+java -cp model-out serviceflow.demo.ModelDriver
+```
+
+The driver adds two requests, checks FIFO order, completes the first job, and verifies that recording payment moves the bill from unpaid to collected. It exits automatically.
+
+### JUnit tests
+
+From the repo root, use PowerShell with JDK 17 or newer.
 
 ```powershell
 $mainSources = @(Get-ChildItem src/main/java -Recurse -Filter *.java | ForEach-Object { $_.FullName })
 javac --release 17 -encoding UTF-8 -d out $mainSources
 
-# Model-only driver
-java -cp out serviceflow.demo.ModelDriver
-
-# Interactive console through the controller
-java -cp out serviceflow.controller.ServiceController
-```
-
-### macOS or Linux
-
-```bash
-find src/main/java -name '*.java' -print0 | xargs -0 javac --release 17 -encoding UTF-8 -d out
-java -cp out serviceflow.demo.ModelDriver
-java -cp out serviceflow.controller.ServiceController
+$junit = 'junit-platform-console-standalone-1.11.4.jar'
+Invoke-WebRequest -UseBasicParsing -Uri "https://repo.maven.apache.org/maven2/org/junit/platform/junit-platform-console-standalone/1.11.4/$junit" -OutFile $junit
+$testSources = @(Get-ChildItem src/test/java -Recurse -Filter *.java | ForEach-Object { $_.FullName })
+javac --release 17 -encoding UTF-8 -cp "out;$junit" -d test-out $testSources
+java -jar $junit execute --class-path "out;test-out" --scan-class-path
 ```
 
 ### Lab demo
@@ -45,26 +49,7 @@ java -cp out serviceflow.controller.ServiceController
 3. Choose `2` to see the waiting line. Choose `4` to start Ana, then `5` to finish her job. Choose `8` to see `$115.00` unpaid.
 4. Choose `6` and enter job ID `1`. Choose `7` to see the paid job in history and `8` to see `$115.00` collected and `$0.00` unpaid. Luis is still waiting. Choose `0` to exit.
 
-### JUnit tests
 
-After compiling the main sources, run the following in PowerShell.
-
-```powershell
-$junit = "junit-platform-console-standalone-1.11.4.jar"
-Invoke-WebRequest -UseBasicParsing -Uri "https://repo.maven.apache.org/maven2/org/junit/platform/junit-platform-console-standalone/1.11.4/$junit" -OutFile $junit
-$testSources = @(Get-ChildItem src/test/java -Recurse -Filter *.java | ForEach-Object { $_.FullName })
-javac --release 17 -encoding UTF-8 -cp "out;$junit" -d test-out $testSources
-java -jar $junit execute --class-path "out;test-out" --scan-class-path
-```
-
-On macOS or Linux, use the following.
-
-```bash
-junit=junit-platform-console-standalone-1.11.4.jar
-curl -fL "https://repo.maven.apache.org/maven2/org/junit/platform/junit-platform-console-standalone/1.11.4/$junit" -o "$junit"
-find src/test/java -name '*.java' -print0 | xargs -0 javac --release 17 -encoding UTF-8 -cp "out:$junit" -d test-out
-java -jar "$junit" execute --class-path "out:test-out" --scan-class-path
-```
 
 ## Reflection
 
@@ -131,15 +116,15 @@ The table records the initial prototype work and separately lists proposed owner
 | Class or test file | Recorded contribution | Proposed owner |
 | --- | --- | --- |
 | `Job.java` | drafted the immutable snapshot, request validation, and billing calculation. | Joey |
-| `LinkedQueue.java` | implemented the FIFO methods and snapshot behavior. | Joey |
+| `LinkedQueue.java` | implemented the FIFO methods and snapshot behavior. | Jovany |
 | `LinkedQueue.Node<T>` (nested in `LinkedQueue.java`) |  implemented the queue node and linking behavior. | Joey |
-| `ServiceManager.java` | implemented the workflow, ID checks, history, and totals. | Joey |
+| `ServiceManager.java` | implemented the workflow, ID checks, history, and totals. | Noah|
 | `ConsoleView.java` |  drafted the menus, prompts, and displays. | Noah |
 | `ServiceController.java` |  integrated the view and model and implemented command and input handling. | Jovany |
 | `ModelDriver.java` |  drafted and ran the model-only workflow. | Jovany |
 | `JobTest.java` |  wrote and ran the request and billing tests. | Joey |
-| `LinkedQueueTest.java` |  wrote and ran the core queue tests. | Joey |
-| `ServiceManagerTest.java` |  wrote and ran the model workflow and state-validation tests. | Joey |
+| `LinkedQueueTest.java` |  wrote and ran the core queue tests. | Noah |
+| `ServiceManagerTest.java` |  wrote and ran the model workflow and state-validation tests. | Noah|
 | `ServiceControllerTest.java` | wrote and ran the console workflow and recovery tests. | Jovany, with Noah on console output checks |
 
-**GenAI note.** ChatGPT used the team's Deliverable 1 scope, Deliverable 2 specification, and Deliverable 3 rubric to draft this Java prototype and README and run the driver, console, and tests. For the change feature, the design question was “Given `Job`, `LinkedQueue`, `ServiceManager`, `ConsoleView`, and `ServiceController`, which classes and methods would have to change to save and restore a session?” The resulting prediction keeps file handling in the manager, command routing in the controller, and the new menu labels in the view. Individual team contributions to this prototype remain to be recorded after the team completes them.
+**GenAI note.** ChatGPT used the team's Deliverable 1 scope, Deliverable 2 specification, and Deliverable 3 rubric to help draft this Java prototype and README and run the driver, console, and tests. For the change feature, the design question was “Given `Job`, `LinkedQueue`, `ServiceManager`, `ConsoleView`, and `ServiceController`, which classes and methods would have to change to save and restore a session?” The resulting prediction keeps file handling in the manager, command routing in the controller, and the new menu labels in the view.
