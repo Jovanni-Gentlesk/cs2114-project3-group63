@@ -97,6 +97,9 @@ These owners follow the responsibilities in Deliverable 2 and are proposed for t
 ### Deliverable 4 change feature · Save and restore a session
 
 This feature extends the original in-session MVP. The owner will save the current session to a file and restore it later, even after restarting ServiceFlow. Loading rebuilds the waiting queue, active job, history, bills, and ID counter. The model will build and validate a temporary session before replacing the live session. A failed load leaves the live session intact.
+ServiceFlow will automatically save the session after every successful change, including adding a request, starting or finishing a job, recording a payment, and clearing the waiting queue. The save file will preserve the waiting order, active job, job history, payment statuses, and next job ID. When ServiceFlow opens again, it will restore the last saved session so the owner can pick up where they left off.
+
+The controller will trigger the save after each successful change, and `ServiceManager` will handle reading and writing the file. Rejected actions will leave the save file untouched. If saving fails, the console will tell the owner that the latest change is still in memory and has not been saved.
 
 | Class | Method-level prediction |
 | --- | --- |
