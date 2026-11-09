@@ -1,158 +1,97 @@
-package serviceflow.model;
+package serviceflow.view;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.io.PrintStream;
+import java.util.Locale;
+import java.util.Scanner;
+import java.util.StringJoiner;
 
-/** Owns the waiting line and the status, billing, and payment rules. */
-public final class ServiceManager implements Iterable<Job> {
-    private final LinkedQueue<Job> jobQueue = new LinkedQueue<>();
-    private final List<Job> allJobs = new ArrayList<>();
-    private Job activeJob;
-    private int nextJobId = 1;
+import serviceflow.model.Job;
 
-    public void addJob(Job job) {
-        if (job == null || !Job.WAITING.equals(job.getStatus())) {
-            throw new IllegalArgumentException("A new waiting job is required.");
+/** Reads raw lines and displays the information supplied by the controller. */
+public final class ConsoleView {
+    private final Scanner input;
+    private final PrintStream output;
+
+    public ConsoleView(Scanner input, PrintStream output) {
+        if (input == null || output == null) {
+            throw new IllegalArgumentException("Console input and output are required.");
         }
 
-        if (job.getID() < nextJobId) {
-            throw new IllegalArgumentException("Job ID has already been used or is below the next ID.");
+        this.input = input;
+        this.output = output;
+    }
+
+    public void showMenu() {
+        output.println();
+        output.println("ServiceFlow");
+        output.println("1 Add request        2 Waiting and active jobs   3 Peek at next job");
+        output.println("4 Start next job     5 Finish active job         6 Record payment");
+        output.println("7 History            8 Payment totals           11 Clear waiting jobs");
+        output.println("0 Exit");
+    }
+
+    public String readText(String prompt) {
+        if (prompt == null) {
+            throw new IllegalArgumentException("A prompt is required.");
         }
 
-        jobQueue.enqueue(job);
-        allJobs.add(job);
-        nextJobId = job.getID() + 1;
+        output.print(prompt);
+        output.flush();
+        return input.hasNextLine() ? input.nextLine() : null;
     }
 
-    public Job addJob(String name, String description, double hours,
-        double rate, double materials) {
-        if (nextJobId == Integer.MAX_VALUE) {
-            throw new IllegalStateException("No more job IDs are available.");
+    public void showJob(Job job) {
+        output.println(formatJob(job));
+    }
+
+    public void showJobs(Job[] jobs) {
+        output.println(formatJobs(jobs));
+    }
+
+    public String formatJobs(Job[] jobs) {
+        if (jobs == null) {
+            throw new IllegalArgumentException("A job list is required.");
         }
 
-        Job job = new Job(nextJobId, name, description, hours, rate, materials);
-        addJob(job);
-        return job;
-    }
-
-    public Job peek() {
-        return jobQueue.peek();
-    }
-
-    public int jobCount() {
-        return jobQueue.size();
-    }
-
-    public boolean isEmpty() {
-        return jobQueue.isEmpty();
-    }
-
-    @Override
-    public Iterator<Job> iterator() {
-        return jobQueue.iterator();
-    }
-
-    public Job removeJob() {
-        return startNextJob();
-    }
-
-    public Job startNextJob() {
-        if (activeJob != null) {
-            throw new IllegalStateException("Complete the active job before starting another.");
+        if (jobs.length == 0) {
+            return "No jobs to display.";
         }
 
-        Job next = jobQueue.dequeue().withStatus(Job.ACTIVE, null);
-        allJobs.set(findJobIndex(next.getID()), next);
-        activeJob = next;
-        return next;
-    }
+        StringJoiner lines = new StringJoiner(System.lineSeparator());
 
-    public Job completeActiveJob() {
-        if (activeJob == null) {
-            throw new IllegalStateException("Start a job before trying to complete it.");
+        for (Job job : jobs) {
+            lines.add(formatJob(job));
         }
 
-        Job completed = activeJob.withStatus(Job.COMPLETED, activeJob.getCost());
-        allJobs.set(findJobIndex(completed.getID()), completed);
-        activeJob = null;
-        return completed;
+        return lines.toString();
     }
 
-    public Job markPaid(int jobId) {
-        int index = findJobIndex(jobId);
-        Job job = allJobs.get(index);
-
-        if (Job.PAID.equals(job.getStatus())) {
-            throw new IllegalStateException("Job #" + jobId + " is already paid.");
+    public void showTotal(double paid, double unpaid) {
+        if (!Double.isFinite(paid) || !Double.isFinite(unpaid) || paid < 0 || unpaid < 0) {
+            throw new IllegalArgumentException("Totals must be finite and nonnegative.");
         }
 
-        if (!Job.COMPLETED.equals(job.getStatus())) {
-            throw new IllegalStateException("Complete job #" + jobId + " before recording payment.");
+        output.printf(Locale.ROOT, "Collected: $%.2f | Unpaid: $%.2f%n", paid, unpaid);
+    }
+
+    public void showMessage(String message) {
+        if (message == null) {
+            throw new IllegalArgumentException("A message is required.");
         }
 
-        Job paid = job.withStatus(Job.PAID, job.getBill());
-        allJobs.set(index, paid);
-        return paid;
+        output.println(message);
     }
 
-    public Job getJob(int jobId) {
-        return allJobs.get(findJobIndex(jobId));
-    }
-
-    public Job getActiveJob() {
-        return activeJob;
-    }
-
-    public List<Job> getHistory() {
-        List<Job> history = new ArrayList<>();
-
-        for (Job job : allJobs) {
-            if (Job.COMPLETED.equals(job.getStatus()) || Job.PAID.equals(job.getStatus())) {
-                history.add(job);
-            }
+    private String formatJob(Job job) {
+        if (job == null) {
+            throw new IllegalArgumentException("A job is required.");
         }
 
-        return List.copyOf(history);
-    }
+        String billText = job.getBill() == null ? "not billed"
+            : String.format(Locale.ROOT, "bill $%.2f", job.getBill());
 
-    public double getCollectedTotal() {
-        return totalForStatus(Job.PAID);
-    }
-
-    public double getUnpaidTotal() {
-        return totalForStatus(Job.COMPLETED);
-    }
-
-    public void clearWaitingJobs() {
-        allJobs.removeIf(job -> Job.WAITING.equals(job.getStatus()));
-        jobQueue.clear();
-    }
-
-    private int findJobIndex(int jobId) {
-        if (jobId <= 0) {
-            throw new IllegalArgumentException("Enter a positive job ID.");
-        }
-
-        for (int index = 0; index < allJobs.size(); index++) {
-            if (allJobs.get(index).getID() == jobId) {
-                return index;
-            }
-        }
-
-        throw new IllegalArgumentException("Job #" + jobId + " was not found.");
-    }
-
-    private double totalForStatus(String status) {
-        BigDecimal total = BigDecimal.ZERO;
-
-        for (Job job : allJobs) {
-            if (status.equals(job.getStatus())) {
-                total = total.add(BigDecimal.valueOf(job.getBill()));
-            }
-        }
-
-        return total.doubleValue();
+        return String.format(Locale.ROOT, "#%d %s | %s | %s | quote $%.2f | %s",
+            job.getID(), job.getName(), job.getServiceDescription(), job.getStatus(),
+            job.getCost(), billText);
     }
 }
