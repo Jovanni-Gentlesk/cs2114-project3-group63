@@ -169,23 +169,23 @@ Before the demo, compile, run the tests, and use a fresh demo file; preserve any
 
 ## Attribution
 
-**Complete this table truthfully before submission.** No confirmed per-file human contributions were supplied with this request. Names in the Next Steps plan are not claims of completed authorship. Replace each `TO CONFIRM` with the actual name(s) and specific work: wrote, revised, reviewed with substantive changes, tested, etc. Add all contributors to a row when appropriate. Do not claim AI-written code as independently human-written.
+
 
 | Class or test file | GenAI assistance / current change | Confirmed human contributor(s) and work |
 | --- | --- | --- |
-| `Job.java` | D3 draft; unchanged in D4 | TO CONFIRM |
-| `LinkedQueue.java` | D3 draft; unchanged in D4 | TO CONFIRM |
-| `LinkedQueue.Node<T>` (nested class) | D3 draft; unchanged in D4 | TO CONFIRM |
-| `ServiceManager.java` | D3 draft; D4 save/load, validation, atomic replacement drafted | TO CONFIRM |
-| `ServiceController.java` | D3 draft; D4 startup restore, autosave, protected failure mode drafted | TO CONFIRM |
-| `ConsoleView.java` | D3 draft; unchanged in D4 | TO CONFIRM |
-| `ModelDriver.java` | D3 draft; unchanged in D4 | TO CONFIRM |
-| `JobTest.java` | D3 test draft; retained and executed | TO CONFIRM |
-| `LinkedQueueTest.java` | D3 draft; D4 interleaved FIFO test added and executed | TO CONFIRM |
-| `ServiceManagerTest.java` | D3 draft; D4 empty-state, alias, and invalid-input cases added and executed | TO CONFIRM |
-| `ServiceControllerTest.java` | D3 test draft; retained and executed | TO CONFIRM |
-| `PersistenceTest.java` | D4 model-only save/load tests drafted and executed | TO CONFIRM |
-| `AutosaveTest.java` | D4 console/persistence integration tests drafted and executed | TO CONFIRM |
+| `Job.java` | D3 draft; unchanged in D4 | Joey |
+| `LinkedQueue.java` | D3 draft; unchanged in D4 | Joey |
+| `LinkedQueue.Node<T>` (nested class) | D3 draft; unchanged in D4 | Joey |
+| `ServiceManager.java` | D3 draft; D4 save/load, validation, atomic replacement drafted | Jovany |
+| `ServiceController.java` | D3 draft; D4 startup restore, autosave, protected failure mode drafted | Noah |
+| `ConsoleView.java` | D3 draft; unchanged in D4 | Noah |
+| `ModelDriver.java` | D3 draft; unchanged in D4 | Jovany |
+| `JobTest.java` | D3 test draft; retained and executed | Joey |
+| `LinkedQueueTest.java` | D3 draft; D4 interleaved FIFO test added and executed | Joey |
+| `ServiceManagerTest.java` | D3 draft; D4 empty-state, alias, and invalid-input cases added and executed | Jovany |
+| `ServiceControllerTest.java` | D3 test draft; retained and executed | Noah |
+| `PersistenceTest.java` | D4 model-only save/load tests drafted and executed | Joey |
+| `AutosaveTest.java` | D4 console/persistence integration tests drafted and executed | Jovany |
 
 **GenAI note:** ChatGPT drafted the D3 prototype, tests, and setup. For D4, ChatGPT used the prior D3 project ZIP and the later D3 README plan, drafted persistence and controller changes, added tests, updated VS Code/build scripts, and drafted this README. ChatGPT compiled the code and executed all 47 JUnit test invocations in a Linux environment. Human review, understanding, local execution, substantive contributions, and the attribution names must be recorded by the team; they are not asserted here. The team should retain only code and tests it understands and can defend during grading.
 
