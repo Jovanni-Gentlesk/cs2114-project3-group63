@@ -1,133 +1,194 @@
-# ServiceFlow · Deliverable 3 First Prototype
+# ServiceFlow — Deliverable 4: Second Prototype + Tests
 
 CS2114 Project 3 · Joey, Jovany, and Noah
 
-ServiceFlow is a Java console app for small landscaping, cleaning, and repair businesses. This prototype lets an owner add requests, check the waiting line, start jobs in first-in, first-out order, issue bills, record payments, and view history and totals. One job can be active at a time. Records live in memory for the current session.
+ServiceFlow is a Java console application for a small service business. Users add requests, inspect the FIFO waiting queue, start and complete jobs, record payment, and check history and totals. **The D4 feature is autosave after successful changes and restore on startup**, as named in D3.
 
-## How to run
+**Before submission:** complete the confirmed-human-contribution column in Attribution. Proposed ownership below is a plan, not evidence of completed work. Each member must actually contribute substantively to at least one class or test file and be ready to explain it. This draft does not claim those contributions happened.
 
-### Interactive console in VS Code on Windows
+## How to compile and run
 
-1. Clone or download this repository. If you download a ZIP, extract it first.
-2. In VS Code, choose **File → Open Folder** and select the folder containing `README.md`, `src`, and `run-serviceflow.cmd`.
-3. Press **Ctrl+Shift+B** or choose **Terminal → Run Task → ServiceFlow: Run**.
-4. When `Choice:` appears in the terminal, enter a menu number. The first run needs internet to download the tools into the project folder. The VS Code task handles that setup automatically.
+### VS Code on Windows
 
-For the lab demo, choose `1` and enter `Ana`, `Mow lawn`, `2.5`, `40`, and `15`. Choose `4` to start the job and `5` to finish it. Choose `8` to see **$115.00 unpaid**. Choose `6`, enter job ID `1`, and then choose `8` to see **$115.00 collected** and **$0.00 unpaid**. Choose `0` to exit.
+1. Extract the entire ZIP. Open the `cs2114-project3-group63` folder in VS Code, not the ZIP or its parent. This folder contains `src`, `lib`, `.vscode`, and `run-serviceflow.cmd`.
+2. Use **Terminal → Run Task → ServiceFlow: Run** (or Ctrl+Shift+B).
+3. Use **Terminal → Run Task → ServiceFlow: Test** to compile the source and run JUnit. Expect **47 tests successful, 0 failed**.
+4. Use **Terminal → Run Task → ServiceFlow: Model Demo** for the original standalone model demonstration.
 
-### Standalone model driver
-
-From the repo root, run these commands in PowerShell with JDK 17 or newer. This compiles only the model and demo packages.
+Equivalent commands in the VS Code PowerShell terminal:
 
 ```powershell
-$modelSources = @(Get-ChildItem -Path 'src/main/java/serviceflow/model','src/main/java/serviceflow/demo' -Recurse -Filter *.java | ForEach-Object { $_.FullName })
-javac --release 17 -encoding UTF-8 -d model-out $modelSources
-java -cp model-out serviceflow.demo.ModelDriver
+.\run-serviceflow.cmd
+.\run-serviceflow.cmd test
+.\run-serviceflow.cmd model
 ```
 
-The driver adds two requests, checks FIFO order, completes the first job, and verifies that recording payment moves the bill from unpaid to collected. It exits automatically.
+The Windows launcher retains the D3 local Java runtime download with checksum verification; its first run needs internet and 64-bit Windows. The ECJ compiler and JUnit console runner are included in `lib`. No Maven installation is required. Do not delete `lib`. The VS Code Java Extension Pack is useful for editing and the Testing sidebar, but the tasks run independently of it.
 
-### JUnit tests
-
-From the repo root, use PowerShell with JDK 17 or newer.
+If you already have Java 17 or newer on PATH, these PowerShell commands avoid the runtime download:
 
 ```powershell
 $mainSources = @(Get-ChildItem src/main/java -Recurse -Filter *.java | ForEach-Object { $_.FullName })
-javac --release 17 -encoding UTF-8 -d out $mainSources
-
-$junit = 'junit-platform-console-standalone-1.11.4.jar'
-Invoke-WebRequest -UseBasicParsing -Uri "https://repo.maven.apache.org/maven2/org/junit/platform/junit-platform-console-standalone/1.11.4/$junit" -OutFile $junit
 $testSources = @(Get-ChildItem src/test/java -Recurse -Filter *.java | ForEach-Object { $_.FullName })
-javac --release 17 -encoding UTF-8 -cp "out;$junit" -d test-out $testSources
-java -jar $junit execute --class-path "out;test-out" --scan-class-path
+$junit = 'lib/junit-platform-console-standalone-1.11.4.jar'
+java -jar lib/ecj-3.40.0.jar -17 -proc:none -encoding UTF-8 -d out $mainSources
+java -jar lib/ecj-3.40.0.jar -17 -proc:none -encoding UTF-8 -cp "out;$junit" -d test-out $testSources
+java -jar $junit execute --class-path "out;test-out" --scan-class-path --fail-if-no-tests
+java -cp out serviceflow.controller.ServiceController
 ```
 
-### Lab demo
+### Linux/macOS with Java 17+
 
-1. Run the model driver. It adds Ana and Luis, verifies that Ana starts first, and prints the status and payment transitions. It exits automatically.
-2. Run the console and choose `1`. Enter `Ana`, `Mow lawn`, `2.5`, `40`, and `15`. Add a second request for `Luis`, `Trim hedges`, `1`, `35`, and `0`.
-3. Choose `2` to see the waiting line. Choose `4` to start Ana, then `5` to finish her job. Choose `8` to see `$115.00` unpaid.
-4. Choose `6` and enter job ID `1`. Choose `7` to see the paid job in history and `8` to see `$115.00` collected and `$0.00` unpaid. Luis is still waiting. Choose `0` to exit.
+```bash
+bash test-serviceflow.sh
+java -cp out serviceflow.controller.ServiceController
+java -cp out serviceflow.demo.ModelDriver
+```
 
+The script compiles all main and test sources using the included ECJ compiler, then executes JUnit. To run only model tests after compilation:
 
+```bash
+java -jar lib/junit-platform-console-standalone-1.11.4.jar execute --class-path out:test-out --select-package serviceflow.model --fail-if-no-tests
+```
+
+Use `out;test-out` instead of `out:test-out` on Windows. The 38 model test invocations instantiate models directly without a controller, view, or console input. Nine additional integration tests check user flows and persistence wiring; they supplement the model tests.
+
+### Save location and recovery
+
+The application uses `serviceflow-data.tsv` in the working folder. Successful add, start, complete, payment, and confirmed clear operations trigger autosave. Read-only choices and rejected operations do not write the file. Clearing an already empty queue is a valid no-op and may save an equivalent snapshot.
+
+A first launch with no file starts empty. Restarting restores waiting order, active work, history, bills, payment statuses, and the next ID. The application can use a different file:
+
+```powershell
+java -cp out serviceflow.controller.ServiceController demo-session.tsv
+```
+
+The model writes UTF-8 tab-separated records with a version and next-ID header. It writes a temporary sibling file and uses atomic replacement. If the filesystem cannot perform atomic replacement, saving fails with a message; there is no unsafe delete-and-replace fallback. Parents must already exist. Only one app instance should use a save file at a time.
+
+If an existing file cannot be loaded, the console explains the problem and disables autosave for that run to protect the file. Changes can still be made in memory. Preserve a copy, repair or move the bad file, and restart. If a later save fails, the changed state remains in memory and the app warns that the previous save remains unchanged. It retries on the next successful mutation. Do not exit expecting unsaved changes to be restored.
+
+## Design and class responsibilities
+
+| Class | Responsibility |
+| --- | --- |
+| `Job` | Immutable request/status snapshot; validates fields and calculates the rounded quote. |
+| `LinkedQueue<T>` / private `Node<T>` | FIFO linked structure with snapshot iteration. |
+| `ServiceManager` | Owns jobs, waiting order, active job, transitions, bills, totals, and validated save/load. |
+| `ServiceController` | Reads actions, parses input, invokes model operations, triggers persistence, and passes results to the view. |
+| `ConsoleView` | Prompts and formats supplied results; owns no job collection, status, total, or manager reference. |
+| `ModelDriver` | Demonstrates the model without the controller or view. |
+
+Flow: user input → controller → manager → current job snapshots/totals → controller → view. The controller briefly creates a display list; neither it nor the view retains a second business-state collection.
+
+## Tests and validation
+
+Verified on November 16, 2026 using Java 21, ECJ targeting Java 17, and JUnit Platform 1.11.4: **47 executed, 47 passed, none skipped**. Parameterized malformed-file cases count separately. Windows launcher commands were reviewed but could not be executed in the Linux verification environment. Run the VS Code Test task on your Windows computer before lab.
+
+| Model method or contract | Normal coverage | Invalid input or boundary coverage |
+| --- | --- | --- |
+| `Job` constructor, getters, cost, `toString` | Trimmed fields, all getters, rounding, zero costs, upper limits | Invalid ID, missing/long/unsafe text, negative/zero hours, invalid ranges, excess decimals, nonfinite numbers |
+| `enqueue`, `peek`, `dequeue` | FIFO, refill, interleaved enqueue/dequeue order | Null entries, empty peek/dequeue, unchanged queue after rejection |
+| Queue `size`, `isEmpty`, `clear`, `toArray`, `iterator`, `toString` | Populated and cleared states, snapshot isolation | Empty/repeated clear, exhausted iterator, rejected iterator mutation |
+| Both `addJob` overloads | Automatic and explicit IDs | Null, non-waiting job, duplicate/reused ID, invalid fields, exhausted IDs |
+| Manager `peek`, `startNextJob`, `removeJob` | FIFO and active status | Empty queue and second start while active |
+| `completeActiveJob` | Bill and history created | No active job and repeated completion |
+| `markPaid`, `getJob` | Lookup and payment totals | Unknown/nonpositive IDs, premature/repeated payment |
+| `jobCount`, `isEmpty`, `iterator`, `getActiveJob`, `getHistory`, totals | Waiting/active/completed/paid states and decimal totals | Empty state, immutable history, exhausted/read-only iterator, preserved state after errors |
+| `clearWaitingJobs` | Removes only waiting work, keeps active/history/ID sequence | Empty/repeated clear and rejected reuse of removed ID |
+| `saveJobs` | Empty/mixed sessions, replace previous snapshot | Null/blank/invalid paths, missing parent, failed replacement with preserved destination and temp-file cleanup |
+| `loadJobs` | Complete round trip and next ID after clear | Missing file/directory, bad paths, bad version/header/row, duplicate IDs, invalid status/bill/fields, multiple active jobs, invalid next ID; old model stays intact |
+
+No-argument queries do not accept bad input; empty/boundary states and snapshot mutation attempts are their meaningful edge cases. Private helpers and `Job.withStatus` are exercised through model operations. Model validation failures are expected exceptions in JUnit; the interactive controller catches the applicable failures and keeps the session running.
+
+The console tests additionally cover invalid menu text, blank fields, nonnumeric/nonfinite amounts, invalid IDs, negative/over-limit values, premature/repeated transitions, interrupted input, startup corruption, save failure, restart, and unchanged save contents/timestamps after rejected or read-only actions.
 
 ## Reflection
 
-### What changed from the specification
+### How the design absorbed the change
 
-| Area | What Deliverable 2 specified | What the prototype does and why |
-| --- | --- | --- |
-| Classes and entry points | The model uses `Job`, `LinkedQueue<T>`, its nested `Node<T>`, and `ServiceManager`. The console starts in `ServiceController.main()` and uses `ConsoleView`. | Those classes and roles carry over in separate packages. `ModelDriver.main()` is an extra entry point, so the user can run the full queue and payment path with fixed inputs and no view. |
-| File methods and menu | `saveJobs(String)` and `loadJobs(String)` belong to the manager. `saveQueue()` and `loadQueue()` are controller actions at menu choices 9 and 10. | The prototype leaves those methods and menu choices for Deliverable 4. The original scope made persistence the change feature, and deferring it lets this checkpoint establish the in-session workflow first. |
-| Active-job display | The menu listed waiting jobs under option 2 and showed the active job when starting work. | Option 2 also displays the active job so an owner can check it again without starting or completing anything. `jobList()` still formats only waiting jobs. |
-| Validation and recovery | The model enforces request and stus rules. The controller handles input parsing and lets the owner correct an invalid field without losing other entries. | `Job` enforces request rules, `ServiceManager` enforces ID and stus rules, and the controller retries blank text and malformed numbers at their prompts. Model-level request errors such as a negative rate return to the menu with an explanation, so the owner can retry the request. This keeps business limits in one place while the first prototype establishes the add flow. Payment retries an invalid or unknown ID in the payment prompt. |
-| Tests | The specification proposed individual method, validation, state-transition, and file tests. | Four JUnit files cover the queue, jobs, manager, and console. The console tests drive the actual menu with input lines so they can catch controller, view, and model wiring errors that model tests miss. The file cases wait for persistence. |
+The implemented change is the same **autosave and restore** feature predicted in D3. The production classes actually modified were **`ServiceManager` and `ServiceController`**.
 
-### Did the model stand alone?
-
-Yes. `ModelDriver` imports only model classes and calls the same `ServiceManager` methods as the controller. The model and driver compile together with the entire view and controller excluded. The queue, job, and manager JUnit tests also exercise the model directly. Billing and status transitions stay in the model. The controller parses text and sends snapshots or totals to the view. `ConsoleView` formats those results using `Job` getters and has no manager reference. `Job.toString()` is available for model diagnostics and the driver.
-
-### What happened to the original unknowns?
-
-| Question from Deliverable 1 | Result |
+| D3 prediction | Actual result |
 | --- | --- |
-| How do front and rear behave when the final request leaves? | Removing the final node clears the rear reference as well as the front. A queue test removes the only item and adds another. |
-| How can statuses prevent invalid transitions? | The manager is the only class that changes stored status. It creates replacement snapshots for `WAITING → ACTIVE → COMPLETED → PAID` and rejects a second start or an early or repeated payment. |
-| How should charges be represented and rounded? | The public API keeps the specified doubles. Decimal arithmetic calculates the quote and rounds it once to cents with `HALF_UP`. Totals add the stored bills using decimal arithmetic. Tests cover a half-cent and a multi-bill total. |
-| How can tests drive the model without console input? | JUnit tests instantiate the queue or manager directly. The driver separately demonstrates the complete workflow with fixed data. |
-| How can a saved file safely restore queue order? | Still open in code. Deliverable 4 will validate a temporary session before replacing the live one, and test that the original session survives a rejected load. |
+| Manager adds `saveJobs(String)` and `loadJobs(String)`, validates before applying, and replaces saves safely | Matched. Loading constructs a temporary manager before committing its state. Saving writes a sibling temporary file and atomically replaces the destination. |
+| Controller restores at startup and saves after successful mutations | Matched. A new constructor accepts the save path; `main` supplies the default or a command-line path. `saveSession` handles save messages. |
+| View reuses `showMessage`; job display methods stay unchanged | Matched. `ConsoleView` source is unchanged. |
+| `Job`, `LinkedQueue`, `Node`, and `ModelDriver` need no persistence changes | Matched. Their source is unchanged from the D3 archive. |
 
-### What remains open
+Existing `LinkedQueueTest` and `ServiceManagerTest` were expanded. New `PersistenceTest` and `AutosaveTest` files cover the feature. Build tasks, runner scripts, dependencies, and this README were also updated. The original `JobTest` and `ServiceControllerTest` remain as regression checks.
 
-The full in-session MVP runs from adding a job through payment, history, and totals. All 20 current JUnit tests pass. Save and load and their tests are still pending. For rejected requests that pass parsing but fail a model rule, the console currently returns to the menu instead of retaining the completed form and re-prompting the affected field.
+A detail the D3 plan did not fully resolve was what happens *after* a bad startup load: simply catching the exception would let the next successful action overwrite the damaged file. The controller now blocks autosave for that run and explicitly reports memory-only changes. Another detail was preserving the next ID when every waiting job was cleared; the header records it independently of remaining jobs.
+
+### Model/view boundary
+
+The change did not move business logic into the view. The view learned no file format, statuses, billing rules, or save-path rules and has no copied model state. The manager owns serialization and whole-session validation; the controller decides when to invoke save/load and displays errors through the existing view method. File errors cross the boundary as exceptions/messages, not as view-side business rules.
+
+### Differences from the D3 plan
+
+- The feature was not switched. `saveJobs(String)` and `loadJobs(String)` now declare `IOException`; invalid path arguments use `IllegalArgumentException`. The controller handles both.
+- A three-argument controller constructor allows isolated file paths for integration tests. The two-argument constructor remains an explicitly in-memory mode so older tests never read or overwrite a real save.
+- The format is now specified: versioned UTF-8 TSV with increasing unique IDs. Record order preserves the waiting queue because requests are added with increasing IDs. Unknown versions are rejected rather than guessed.
+- Persistence tests live in separate files for readability. Model tests stay independent of the UI; console tests only verify wiring and user recovery.
+- Field-by-field correction after model validation was deferred. Blank text and malformed numbers re-prompt as before; a completed form rejected by a model rule returns to the menu without adding a partial job. D3's richer correction behavior needs a structured field-validation contract to avoid copying limits into the controller.
+
+### What does not work yet
+
+The in-session MVP and the planned persistence feature are implemented; no tests currently fail. Field-level correction is still missing. There is no GUI, recurring template system, partial payment, multi-crew scheduling, concurrency control, or automatic repair of corrupt saves. Permission-denied behavior and unsupported atomic moves are handled by exception paths but were not independently induced under this environment's privileged account/filesystem. Windows execution and the team's lab walkthrough still need local verification.
+
+### Design improvement for the next feature
+
+Before adding more storage formats, extract persistence behind a model-side `SessionStore` interface so `ServiceManager` can focus on service rules and file failures can be tested with an injected store. Before field-level correction, give validation failures a field identifier so the controller can retry the correct field without duplicating `Job` limits. Neither refactor is necessary for this checkpoint's working feature.
 
 ## Next Steps
 
-### Order of work and owners
+These owners follow the D3 proposed roles; the team must confirm acceptance and record actual work in Attribution.
 
-These owners follow the responsibilities in Deliverable 2 and are proposed for the next checkpoint.
-
-| Order | Owner | Remaining work |
+| Order | Proposed owner | Remaining item |
 | --- | --- | --- |
-| 1 | Jovany, with Joey on the model contract | Finish the remaining in-session recovery polish. Make `ServiceController.addJob()` retain valid fields and ask again for the field rejected by the model. Joey will keep the field validation rules in `Job`. |
-| 2 | Joey | Implement `ServiceManager.saveJobs(String)` and `loadJobs(String)`, along with model tests. Preserve the waiting order, active job, history, bills, and next ID. |
-| 3 | Noah | Extend `ConsoleView.showMenu()` with the save and restore choices and verify the prompts, confirmation, and messages in a console session. |
-| 4 | Jovany | Connect the save and restore commands to the model, handle cancellation and errors, add controller tests, and run the final demo from a fresh checkout. |
+| 1 | Joey | Review and explain `ServiceManager` persistence and `PersistenceTest`; verify failed loads preserve live state and perform permission/atomic-move checks on the target machine. Record actual revisions. |
+| 2 | Jovany | Run the VS Code program/test tasks on Windows; review controller autosave and `AutosaveTest`; fix any platform issues. |
+| 3 | Jovany with Joey | Add model-owned field identification and controller field retries, with tests retaining previously valid input. |
+| 4 | Noah | Substantively review/revise `ServiceControllerTest` and queue edge-case tests; add a justified missing case, then verify messages and the restart workflow. Record the specific contribution. |
+| 5 | All three | Fill in truthful per-file attribution, run all tests again after any edits, rehearse the demo, and upload the full source/test/README project to the group repository. |
 
-### Deliverable 4 change feature · Save and restore a session
+**Committed stretch goal:** autosave and startup restore, implemented here and retained for the final build. **Dropped from the final-build scope:** GUI, recurring templates, priority queue, extra crews/statuses, partial payments, notifications, exports, and analytics. Prioritize validation and reliability over new features.
 
-This feature extends the original in-session MVP. The owner will save the current session to a file and restore it later, even after restarting ServiceFlow. Loading rebuilds the waiting queue, active job, history, bills, and ID counter. The model will build and validate a temporary session before replacing the live session. A failed load leaves the live session intact.
-ServiceFlow will automatically save the session after every successful change, including adding a request, starting or finishing a job, recording a payment, and clearing the waiting queue. The save file will preserve the waiting order, active job, job history, payment statuses, and next job ID. When ServiceFlow opens again, it will restore the last saved session so the owner can pick up where they left off.
+### Timed three-minute demo
 
-The controller will trigger the save after each successful change, and `ServiceManager` will handle reading and writing the file. Rejected actions will leave the save file untouched. If saving fails, the console will tell the owner that the latest change is still in memory and has not been saved.
+Before the demo, compile, run the tests, and use a fresh demo file; preserve any real business data. Have the successful test summary ready.
 
-| Class | Method-level prediction |
+| Time | Demo action |
 | --- | --- |
-| `ServiceManager` (model) | Add `saveJobs(String)` and `loadJobs(String)`. Save the version header and records in creation order, then replace the destination from a temporary file. Load checks IDs, status, one-active-job limit, bill amounts, and the next-ID counter before committing state. |
-| `ServiceController` (controller) | Add `saveQueue()` and `loadQueue()`. Update `run()` to dispatch choices 9 and 10. Ask for a file path, confirm replacing the current session, and display file errors through the view. |
-| `ConsoleView` (view) | Update `showMenu()` to list the new actions. Reuse `readText(String)` and `showMessage(String)` for prompts and results. `showJob(Job)` and `showTotal(double, double)` should stay as written. |
-| `Job`, `LinkedQueue<T>`, nested `Node<T>`, and `ModelDriver` | No source changes expected for persistence. The manager can rebuild jobs through the constructor and its existing package-visible `Job.withStatus(...)` helper, then rebuild the line with `LinkedQueue.enqueue(T)`. The driver stays an in-session demonstration. |
-
-**Stretch goals.** Commit to manual save and restore. Drop recurring-service templates and a graphical interface for Deliverable 4.
-
-**New tests.** Joey will test `saveJobs()` and `loadJobs()` for a round trip with two waiting jobs and an active, completed, and paid job. Cases include a blank path, missing file, failed save, unsupported header, duplicate IDs, multiple active jobs, inconsistent bills, and an invalid next-ID counter. Tests will check that a failed load preserves the prior session. Jovany will test `addJob()` field correction and preserved inputs, plus save and restore menu dispatch, declined restore, EOF at a path or confirmation prompt, and recovery after a file error. Noah will verify that menu and result messages match the actions during the demo.
+| 0:00–0:20 | Explain controller/model/view roles; show the completed test summary and queue interleaving test. |
+| 0:20–0:55 | Add Ana: Lawn, 2.5 hours, $40/hour, $15 materials. Add Luis: Hedges, 1 hour, $35/hour, $0 materials. Option 2 shows FIFO order. |
+| 0:55–1:20 | Option 4 starts Ana. Try 4 again to show the handled error. Option 5 completes Ana; option 8 shows $115 unpaid. |
+| 1:20–1:50 | Exit with 0 and restart with the same save path. Show restored Luis waiting and Ana's unpaid bill/history. This demonstrates the new feature. |
+| 1:50–2:15 | Option 6, ID 1 marks Ana paid. Option 8 shows $115 collected and $0 unpaid. Try paying ID 1 again to show rejection. |
+| 2:15–2:40 | Show `loadJobs` validating into a temporary manager and the malformed-file test preserving the old state. |
+| 2:40–3:00 | State which classes changed, the deferred field-correction work, and each member's actual contribution. |
 
 ## Attribution
 
-The table records the initial prototype work and separately lists proposed owners. The team should record its actual coding, revision, and testing work in the middle column before submitting.
+**Complete this table truthfully before submission.** No confirmed per-file human contributions were supplied with this request. Names in the Next Steps plan are not claims of completed authorship. Replace each `TO CONFIRM` with the actual name(s) and specific work: wrote, revised, reviewed with substantive changes, tested, etc. Add all contributors to a row when appropriate. Do not claim AI-written code as independently human-written.
 
-| Class or test file | Recorded contribution | Proposed owner |
+| Class or test file | GenAI assistance / current change | Confirmed human contributor(s) and work |
 | --- | --- | --- |
-| `Job.java` | drafted the immutable snapshot, request validation, and billing calculation. | Joey |
-| `LinkedQueue.java` | implemented the FIFO methods and snapshot behavior. | Jovany |
-| `LinkedQueue.Node<T>` (nested in `LinkedQueue.java`) |  implemented the queue node and linking behavior. | Joey |
-| `ServiceManager.java` | implemented the workflow, ID checks, history, and totals. | Noah|
-| `ConsoleView.java` |  drafted the menus, prompts, and displays. | Noah |
-| `ServiceController.java` |  integrated the view and model and implemented command and input handling. | Jovany |
-| `ModelDriver.java` |  drafted and ran the model-only workflow. | Jovany |
-| `JobTest.java` |  wrote and ran the request and billing tests. | Joey |
-| `LinkedQueueTest.java` |  wrote and ran the core queue tests. | Noah |
-| `ServiceManagerTest.java` |  wrote and ran the model workflow and state-validation tests. | Noah|
-| `ServiceControllerTest.java` | wrote and ran the console workflow and recovery tests. | Jovany, with Noah on console output checks |
+| `Job.java` | D3 draft; unchanged in D4 | TO CONFIRM |
+| `LinkedQueue.java` | D3 draft; unchanged in D4 | TO CONFIRM |
+| `LinkedQueue.Node<T>` (nested class) | D3 draft; unchanged in D4 | TO CONFIRM |
+| `ServiceManager.java` | D3 draft; D4 save/load, validation, atomic replacement drafted | TO CONFIRM |
+| `ServiceController.java` | D3 draft; D4 startup restore, autosave, protected failure mode drafted | TO CONFIRM |
+| `ConsoleView.java` | D3 draft; unchanged in D4 | TO CONFIRM |
+| `ModelDriver.java` | D3 draft; unchanged in D4 | TO CONFIRM |
+| `JobTest.java` | D3 test draft; retained and executed | TO CONFIRM |
+| `LinkedQueueTest.java` | D3 draft; D4 interleaved FIFO test added and executed | TO CONFIRM |
+| `ServiceManagerTest.java` | D3 draft; D4 empty-state, alias, and invalid-input cases added and executed | TO CONFIRM |
+| `ServiceControllerTest.java` | D3 test draft; retained and executed | TO CONFIRM |
+| `PersistenceTest.java` | D4 model-only save/load tests drafted and executed | TO CONFIRM |
+| `AutosaveTest.java` | D4 console/persistence integration tests drafted and executed | TO CONFIRM |
 
-**GenAI note.** ChatGPT used the team's Deliverable 1 scope, Deliverable 2 specification, and Deliverable 3 rubric to help draft this Java prototype and README and run the driver, console, and tests. For the change feature, the design question was “Given `Job`, `LinkedQueue`, `ServiceManager`, `ConsoleView`, and `ServiceController`, which classes and methods would have to change to save and restore a session?” The resulting prediction keeps file handling in the manager, command routing in the controller, and the new menu labels in the view.
+**GenAI note:** ChatGPT drafted the D3 prototype, tests, and setup. For D4, ChatGPT used the prior D3 project ZIP and the later D3 README plan, drafted persistence and controller changes, added tests, updated VS Code/build scripts, and drafted this README. ChatGPT compiled the code and executed all 47 JUnit test invocations in a Linux environment. Human review, understanding, local execution, substantive contributions, and the attribution names must be recorded by the team; they are not asserted here. The team should retain only code and tests it understands and can defend during grading.
+
+## Submission
+
+Upload the source, tests, scripts, dependency setup, and completed README to the group's GitHub repository, then submit its URL in Canvas. This package does not itself update GitHub or submit Canvas. Include `src/main/java`, `src/test/java`, `.vscode`, `lib`, scripts, README, and third-party notices; do not upload generated class directories, downloaded runtimes, or personal session files.
