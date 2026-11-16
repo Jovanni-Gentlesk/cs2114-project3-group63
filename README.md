@@ -175,13 +175,13 @@ Before the demo, compile, run the tests, and use a fresh demo file; preserve any
 | `Job.java` | D3 draft; unchanged in D4 | Joey |
 | `LinkedQueue.java` | D3 draft; unchanged in D4 | Joey |
 | `LinkedQueue.Node<T>` (nested class) | D3 draft; unchanged in D4 | Joey |
-| `ServiceManager.java` | D3 draft; D4 save/load, validation, atomic replacement drafted | Noah |
+| `ServiceManager.java` | D3 draft; D4 save/load, validation, atomic replacement drafted | Jovany |
 | `ServiceController.java` | D3 draft; D4 startup restore, autosave, protected failure mode drafted | Noah |
 | `ConsoleView.java` | D3 draft; unchanged in D4 | Noah |
 | `ModelDriver.java` | D3 draft; unchanged in D4 | Jovany |
 | `JobTest.java` | D3 test draft; retained and executed | Joey |
 | `LinkedQueueTest.java` | D3 draft; D4 interleaved FIFO test added and executed | Joey |
-| `ServiceManagerTest.java` | D3 draft; D4 empty-state, alias, and invalid-input cases added and executed | Noah |
+| `ServiceManagerTest.java` | D3 draft; D4 empty-state, alias, and invalid-input cases added and executed | Jovany |
 | `ServiceControllerTest.java` | D3 test draft; retained and executed | Noah |
 | `PersistenceTest.java` | D4 model-only save/load tests drafted and executed | Joey |
 | `AutosaveTest.java` | D4 console/persistence integration tests drafted and executed | Jovany |
